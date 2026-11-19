@@ -4,6 +4,6 @@ import tailwind from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwind()],
-  build: { rollupOptions: { output: { manualChunks: { charts: ['recharts'], react: ['react', 'react-dom'] } } } },
+  build: { rollupOptions: { output: { manualChunks: { charts: ['recharts'] } } } },
   server: { proxy: { '/api': 'http://127.0.0.1:8000', '/healthz': 'http://127.0.0.1:8000' } },
 })

@@ -13,6 +13,13 @@ RESPONSES = {
 }
 
 
+def thresholds_from_config(config: dict):
+    ceilings = tuple(config[f"{name}_ceiling"] for name in ("low", "medium", "high"))
+    if any(type(value) is not int for value in ceilings) or not 1 <= ceilings[0] < ceilings[1] < ceilings[2] < 25:
+        raise ValueError("Risk ceilings must be ordered integers between 1 and 24")
+    return tuple(zip((*ceilings, 25), ("low", "medium", "high", "critical")))
+
+
 def assess(hazard: str, probability: int, severity: int, thresholds=LEVELS) -> dict:
     if hazard not in HAZARDS or probability not in range(1, 6) or severity not in range(1, 6):
         raise ValueError("Select a known hazard and likelihood and consequence scores from 1 to 5")

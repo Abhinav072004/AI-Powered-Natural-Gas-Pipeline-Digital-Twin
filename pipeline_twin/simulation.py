@@ -50,7 +50,11 @@ class Frame:
 
 
 def pressure_tag(index: int, final: int) -> str:
-    return {0: "PT-101", min(4, final - 1): "PT-102", final: "PT-103"}.get(index, f"PT-B{index:02}")
+    if index == 0:
+        return "PT-101"
+    if index == final:
+        return "PT-103"
+    return "PT-102" if index == min(4, final - 1) else f"PT-B{index:02}"
 
 
 def simulate(scenario: str, *, steps: int = 40, seed: int | None = None,
@@ -159,6 +163,32 @@ def experiment(output: Path, rounds: int = 2, steps: int = 32) -> dict[str, int]
     return counts
 
 
+def export_csv(output: Path):
+    """Flatten boundary instrumentation into a tabular file per split."""
+    import pandas as pd
+
+    columns_by_sensor = {
+        "PT-101": "inlet_pressure_pa_absolute", "PT-103": "outlet_pressure_pa_absolute",
+        "FT-101": "inlet_flow_kg_s", "FT-102": "outlet_flow_kg_s", "TT-101": "gas_temperature_k",
+        "PWR-101": "compressor_power_w",
+    }
+    for split in ("train", "validation", "test"):
+        with (output / f"{split}.jsonl").open() as dataset:
+            frames = [json.loads(line) for line in dataset]
+        rows = []
+        for frame in frames:
+            observations = {reading["sensor_id"]: reading for reading in frame["readings"]}
+            health = ("unavailable" if not observations else
+                      "degraded" if any(reading["quality"] != "good" for reading in observations.values()) else "good")
+            rows.append({
+                "timestamp": frame["observed_at"], "run_id": frame["run_id"], "step": frame["step"],
+                "affected_segment_id": frame["leak_segment"], "sensor_health": health,
+                "event_label": frame["label"], "scenario": frame["scenario"],
+                **{column: observations.get(sensor, {}).get("value") for sensor, column in columns_by_sensor.items()},
+            })
+        pd.DataFrame(rows).to_csv(output / f"{split}.csv", index=False)
+
+
 def publish(host: str, port: int, scenario: str, period_s: float, steps: int, run_id: str):
     import os
     import paho.mqtt.client as mqtt
@@ -169,11 +199,15 @@ def publish(host: str, port: int, scenario: str, period_s: float, steps: int, ru
     client.connect(host, port)
     client.loop_start()
     try:
-        for frame in simulate(scenario, steps=steps, start=datetime.now(timezone.utc), run_id=run_id,
-                              interval_s=period_s):
+        interval = read_case()["simulation"]["sample_interval_s"]
+        start = datetime.now(timezone.utc) - timedelta(seconds=max(0, interval - period_s) * (steps - 1))
+        for frame in simulate(scenario, steps=steps, start=start, run_id=run_id, interval_s=interval):
+            pending = []
             for reading in frame.readings:
                 topic = f"prototype/telemetry/v1/{run_id}/{reading.sensor_id}"
                 message = client.publish(topic, json.dumps(asdict(reading), allow_nan=False), qos=1)
+                pending.append((topic, message))
+            for topic, message in pending:
                 message.wait_for_publish(timeout=10)
                 if not message.is_published():
                     raise RuntimeError(f"MQTT publish did not complete for {topic}")
@@ -190,6 +224,7 @@ def main():
     dataset.add_argument("--output", type=Path, default=Path("artifacts/data"))
     dataset.add_argument("--rounds", type=int, default=2)
     dataset.add_argument("--steps", type=int, default=32)
+    dataset.add_argument("--csv", action="store_true", help="Also export flat frame data with Pandas")
     stream = commands.add_parser("publish")
     stream.add_argument("--host", default="localhost")
     stream.add_argument("--port", type=int, default=1883)
@@ -200,6 +235,8 @@ def main():
     args = parser.parse_args()
     if args.command == "dataset":
         print(json.dumps(experiment(args.output, args.rounds, args.steps), indent=2))
+        if args.csv:
+            export_csv(args.output)
     else:
         if args.period <= 0:
             parser.error("publish --period must be positive")

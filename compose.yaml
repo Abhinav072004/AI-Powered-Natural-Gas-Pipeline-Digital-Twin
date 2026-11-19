@@ -1,0 +1,139 @@
+name: pipeline-twin
+
+x-python: &python
+  image: pipeline-twin-python:local
+  networks: [core]
+
+x-database: &database
+  DATABASE_URL: postgresql://db:5432/pipeline_twin
+  PGUSER: pipeline_twin
+  PGPASSWORD: ${POSTGRES_PASSWORD:-pipeline-local-demo}
+
+services:
+  db:
+    image: timescale/timescaledb:2.19.3-pg16
+    environment:
+      POSTGRES_DB: pipeline_twin
+      POSTGRES_USER: pipeline_twin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pipeline-local-demo}
+      NO_TS_TUNE: "true"
+      TIMESCALEDB_TELEMETRY: "off"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks: [core]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U pipeline_twin -d pipeline_twin"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  broker:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt:/mosquitto/data
+    networks: [core]
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null"]
+      interval: 3s
+      timeout: 4s
+      retries: 20
+
+  models:
+    <<: *python
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.python
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        python -m pipeline_twin.simulation dataset
+        python -m pipeline_twin.detection --xgboost > artifacts/models-training.json
+        python -m pipeline_twin.maintenance
+    volumes:
+      - artifacts:/app/artifacts
+
+  migrate:
+    <<: *python
+    command: ["python", "-m", "pipeline_twin.migrate"]
+    environment: *database
+    depends_on:
+      db:
+        condition: service_healthy
+      models:
+        condition: service_started
+
+  api:
+    <<: *python
+    networks: [core, edge]
+    environment:
+      <<: *database
+      TELEMETRY_STALE_AFTER_S: ${TELEMETRY_STALE_AFTER_S:-180}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      KNOWLEDGE_INDEX_PATH: /app/index
+    volumes:
+      - artifacts:/app/artifacts:ro
+      - knowledge:/app/index
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      models:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; assert urlopen('http://localhost:8000/healthz', timeout=3).status == 200"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+
+  ingestion:
+    <<: *python
+    command: ["python", "-m", "pipeline_twin.storage"]
+    environment:
+      <<: *database
+      MQTT_HOST: broker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      broker:
+        condition: service_healthy
+      models:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/telemetry-subscription"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    ports:
+      - "${TWIN_BIND_ADDRESS:-127.0.0.1}:${TWIN_PORT:-8080}:80"
+    networks: [edge]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  publisher:
+    <<: *python
+    profiles: [demo]
+    entrypoint: ["python", "-m", "pipeline_twin.simulation", "publish", "--host", "broker"]
+    command: ["--scenario", "normal", "--period", "2", "--steps", "24"]
+    depends_on:
+      ingestion:
+        condition: service_healthy
+
+networks:
+  core:
+    internal: true
+  edge:
+
+volumes:
+  postgres:
+  mqtt:
+  artifacts:
+  knowledge:

@@ -53,3 +53,24 @@ def test_registered_pdf_preserves_page_reference(tmp_path):
     assert result.excerpt == "Test technical reference"
     assert result.page == 1
     assert result.reference == "https://example.test/reference"
+
+
+def test_configured_generation_receives_retrieved_sources(index, monkeypatch):
+    import io
+    import json
+    from pipeline_twin import copilot
+
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:9000/v1")
+    monkeypatch.setenv("LLM_MODEL", "test-model")
+
+    def response(request, timeout):
+        body = json.loads(request.data)
+        context = json.loads(body["messages"][1]["content"])
+        assert request.full_url.endswith("/v1/chat/completions")
+        assert context["sources"][0]["number"] == 1 and context["sources"][0]["excerpt"]
+        assert context["simulated_context"] == "Synthetic telemetry"
+        return io.BytesIO(b'{"choices":[{"message":{"content":"Linepack is stored gas. [1]"}}]}')
+
+    monkeypatch.setattr(copilot, "urlopen", response)
+    result = answer(index, "What is linepack and why does it matter?", "Synthetic telemetry")
+    assert result["mode"] == "generated" and "[1]" in result["answer"]

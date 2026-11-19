@@ -43,3 +43,9 @@ pressure_and_temperature_station_boundaries = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 flow_station_boundaries = [0, 8]
 sectionalizing_valve_boundaries = [2, 4, 6]
 delivery_station_boundary = 8
+
+# Educational probability × severity categories.
+[risk]
+low_ceiling = 4
+medium_ceiling = 9
+high_ceiling = 15

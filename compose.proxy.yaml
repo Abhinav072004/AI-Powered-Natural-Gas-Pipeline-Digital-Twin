@@ -1,0 +1,11 @@
+services:
+  models:
+    build:
+      secrets: [build_ca]
+  dashboard:
+    build:
+      secrets: [build_ca]
+
+secrets:
+  build_ca:
+    file: ${TWIN_BUILD_CA_FILE:-/etc/ssl/certs/ca-certificates.crt}

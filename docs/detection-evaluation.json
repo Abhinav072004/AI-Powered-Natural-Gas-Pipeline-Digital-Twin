@@ -1,5 +1,30 @@
 {
   "physics": {
+    "false_positive_samples_by_scenario": {
+      "normal": 7,
+      "demand_increase": 3,
+      "large_leak": 5,
+      "small_leak": 3,
+      "flow_fault": 7,
+      "communication_failure": 1,
+      "compressor_degradation": 3
+    },
+    "false_negative_samples_by_leak_size": {
+      "large_leak": 24,
+      "small_leak": 35
+    },
+    "localization_by_leak_size": {
+      "large_leak": {
+        "samples": 18,
+        "mean_error_km": 0.0,
+        "exact_segment_fraction": 1.0
+      },
+      "small_leak": {
+        "samples": 5,
+        "mean_error_km": 170.442,
+        "exact_segment_fraction": 0.2
+      }
+    },
     "isolation_forest_novelty_roc_auc": null,
     "classification": {
       "normal operation": {
@@ -121,6 +146,27 @@
     "exact_segment_fraction": 0.8260869565217391
   },
   "random_forest": {
+    "false_positive_samples_by_scenario": {
+      "flow_fault": 5,
+      "normal": 1,
+      "valve_abnormal": 1
+    },
+    "false_negative_samples_by_leak_size": {
+      "large_leak": 20,
+      "small_leak": 32
+    },
+    "localization_by_leak_size": {
+      "large_leak": {
+        "samples": 22,
+        "mean_error_km": 0.0,
+        "exact_segment_fraction": 1.0
+      },
+      "small_leak": {
+        "samples": 8,
+        "mean_error_km": 152.289375,
+        "exact_segment_fraction": 0.25
+      }
+    },
     "isolation_forest_novelty_roc_auc": 0.7246827624929815,
     "classification": {
       "normal operation": {
@@ -243,6 +289,26 @@
     "validation_threshold": 0.25
   },
   "svm": {
+    "false_positive_samples_by_scenario": {
+      "flow_fault": 4,
+      "normal": 2
+    },
+    "false_negative_samples_by_leak_size": {
+      "large_leak": 25,
+      "small_leak": 23
+    },
+    "localization_by_leak_size": {
+      "small_leak": {
+        "samples": 17,
+        "mean_error_km": 73.31573529411764,
+        "exact_segment_fraction": 0.5882352941176471
+      },
+      "large_leak": {
+        "samples": 17,
+        "mean_error_km": 0.0,
+        "exact_segment_fraction": 1.0
+      }
+    },
     "isolation_forest_novelty_roc_auc": 0.7246827624929815,
     "classification": {
       "normal operation": {
@@ -365,6 +431,25 @@
     "validation_threshold": 0.25
   },
   "xgboost": {
+    "false_positive_samples_by_scenario": {
+      "flow_fault": 3
+    },
+    "false_negative_samples_by_leak_size": {
+      "large_leak": 33,
+      "small_leak": 35
+    },
+    "localization_by_leak_size": {
+      "small_leak": {
+        "samples": 5,
+        "mean_error_km": 125.8315,
+        "exact_segment_fraction": 0.4
+      },
+      "large_leak": {
+        "samples": 9,
+        "mean_error_km": 0.0,
+        "exact_segment_fraction": 1.0
+      }
+    },
     "isolation_forest_novelty_roc_auc": 0.7246827624929815,
     "classification": {
       "normal operation": {

@@ -3,6 +3,7 @@
 from datetime import datetime
 import logging
 import os
+from pathlib import Path
 import time
 from typing import Annotated, Literal
 
@@ -106,6 +107,9 @@ class Store:
 def consume():
     logging.basicConfig(level=logging.INFO)
     store = Store(os.environ["DATABASE_URL"])
+    store.check()
+    readiness = Path("/tmp/telemetry-subscription")
+    readiness.unlink(missing_ok=True)
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="pipeline-ingestion-v1",
                          clean_session=False, manual_ack=True)
     if username := os.getenv("MQTT_USERNAME"):
@@ -115,6 +119,15 @@ def consume():
     def connected(client, userdata, flags, reason_code, properties):
         if not reason_code.is_failure:
             client.subscribe(f"{TOPIC}/+/+", qos=1)
+
+    @client.subscribe_callback()
+    def subscribed(client, userdata, mid, reason_codes, properties):
+        if reason_codes and all(not code.is_failure for code in reason_codes):
+            readiness.touch()
+
+    @client.disconnect_callback()
+    def disconnected(client, userdata, flags, reason_code, properties):
+        readiness.unlink(missing_ok=True)
 
     @client.message_callback()
     def received(client, userdata, message):

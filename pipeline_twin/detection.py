@@ -1,7 +1,7 @@
 """Causal telemetry features, physics-based localization, and synthetic model evaluation."""
 
 import argparse
-from collections import deque
+from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -148,21 +148,24 @@ class Detector:
         self.artifact = artifact
         self.candidates = deque(maxlen=3)
 
-    def classify(self, evidence: Evidence) -> dict:
+    def classify(self, evidence: Evidence, scores: dict | None = None, novelty: float | None = None) -> dict:
         candidate = physics_predict(evidence)
-        probability = novelty = None
+        probability = None
         if self.artifact and evidence.availability > 0:
-            features = np.array([evidence.features])
-            model = self.artifact["classifier"]
-            scores = dict(zip(model.classes_, model.predict_proba(features)[0]))
+            if scores is None:
+                features = np.array([evidence.features])
+                model = self.artifact["classifier"]
+                scores = dict(zip(model.classes_, model.predict_proba(features)[0]))
+                novelty = float(-self.artifact["novelty"].decision_function(features)[0])
             probability = float(scores.get(LEAK, 0))
-            novelty = float(-self.artifact["novelty"].decision_function(features)[0])
             if evidence.availability == 1:
                 candidate = max((label for label in scores if label != LEAK), key=scores.get, default=NORMAL)
                 if probability >= self.artifact["threshold"] and (
                     evidence.residual_kg_s is not None and evidence.residual_kg_s > 0
                 ):
                     candidate = LEAK
+        if evidence.availability == 0:
+            novelty = None
         self.candidates.append(evidence.worst_segment if candidate == LEAK else None)
         persistent = (candidate == LEAK and len(self.candidates) >= 2
                       and self.candidates[-1] is not None and self.candidates[-2] is not None)
@@ -194,11 +197,18 @@ def data(path: Path):
 def replay(rows, artifact):
     previous = None
     outputs = []
-    for row, evidence in rows:
+    scores = [None] * len(rows)
+    novelty = [None] * len(rows)
+    if artifact and rows:
+        features = np.array([evidence.features for _, evidence in rows])
+        classifier = artifact["classifier"]
+        scores = [dict(zip(classifier.classes_, values)) for values in classifier.predict_proba(features)]
+        novelty = (-artifact["novelty"].decision_function(features)).tolist()
+    for (row, evidence), probabilities, anomaly in zip(rows, scores, novelty):
         if previous != row["run_id"]:
             detector = Detector(artifact)
             previous = row["run_id"]
-        outputs.append(detector.classify(evidence))
+        outputs.append(detector.classify(evidence, probabilities, anomaly))
     return outputs
 
 
@@ -213,7 +223,9 @@ def evaluate(rows, outputs):
     previous_false_alarm_run = None
     novelty_samples = []
     event_runs = {}
-    errors = []
+    errors = defaultdict(list)
+    false_positive_scenarios = Counter()
+    missed_samples_by_scenario = Counter()
     bounds = read_case()["simulation"]["segment_boundaries_km"]
     centers = [(a + b) / 2 for a, b in zip(bounds, bounds[1:])]
     for (row, _), out in zip(rows, outputs):
@@ -223,17 +235,30 @@ def evaluate(rows, outputs):
         previous_false_alarm_run = row["run_id"] if false_alarm else None
         if out["novelty_score"] is not None:
             novelty_samples.append((row["label"] != NORMAL, out["novelty_score"]))
+        if row["label"] != LEAK and out["classification"] == LEAK:
+            false_positive_scenarios[row["scenario"]] += 1
         if row["leak_segment"] is not None:
+            if out["classification"] != LEAK:
+                missed_samples_by_scenario[row["scenario"]] += 1
             episode = event_runs.setdefault(row["run_id"], (row["step"], None))
             if out["estimated_segment"] is not None:
                 if episode[1] is None:
                     event_runs[row["run_id"]] = (episode[0], row["step"])
-                errors.append(abs(centers[row["leak_segment"] - 1] - centers[out["estimated_segment"] - 1]))
+                errors[row["scenario"]].append(abs(centers[row["leak_segment"] - 1]
+                                                  - centers[out["estimated_segment"] - 1]))
     interval = read_case()["simulation"]["sample_interval_s"]
     latency = [(end - start) * interval for start, end in event_runs.values() if end is not None]
     result = classification_report(truth, predictions, labels=list(LABELS), output_dict=True, zero_division=0)
     novelty_labels, novelty_scores = zip(*novelty_samples) if novelty_samples else ([], [])
+    localization = [error for samples in errors.values() for error in samples]
     return {
+        "false_positive_samples_by_scenario": dict(false_positive_scenarios),
+        "false_negative_samples_by_leak_size": dict(missed_samples_by_scenario),
+        "localization_by_leak_size": {
+            name: {"samples": len(samples), "mean_error_km": float(np.mean(samples)),
+                   "exact_segment_fraction": samples.count(0) / len(samples)}
+            for name, samples in errors.items()
+        },
         "isolation_forest_novelty_roc_auc": roc_auc_score(novelty_labels, novelty_scores)
         if len(set(novelty_labels)) == 2 else None,
         "classification": result, "labels": LABELS,
@@ -244,9 +269,9 @@ def evaluate(rows, outputs):
         "false_leak_alarms_per_normal_hour": false_alarm_events / (normal_count * interval / 3600),
         "leak_episodes": len(event_runs), "missed_episodes": len(event_runs) - len(latency),
         "median_detection_latency_s": float(np.median(latency)) if latency else None,
-        "localized_samples": len(errors),
-        "mean_localization_error_km": float(np.mean(errors)) if errors else None,
-        "exact_segment_fraction": errors.count(0) / len(errors) if errors else None,
+        "localized_samples": len(localization),
+        "mean_localization_error_km": float(np.mean(localization)) if localization else None,
+        "exact_segment_fraction": localization.count(0) / len(localization) if localization else None,
     }
 
 

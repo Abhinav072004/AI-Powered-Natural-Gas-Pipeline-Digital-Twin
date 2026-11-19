@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 import os
@@ -24,6 +24,7 @@ from .simulation import SCENARIOS, pressure_tag, simulate
 from .storage import Store
 
 settings = read_case()
+risk_thresholds = risk.thresholds_from_config(settings["risk"])
 pipe = Pipeline(settings["simulation"])
 profile = [asdict(segment) for segment in pipe.steady()]
 store = Store(os.getenv("DATABASE_URL"))
@@ -116,7 +117,6 @@ def dashboard(run_id: str | None = Query(None, max_length=80)):
 def demo_payload(scenario: str):
     frames = []
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    from datetime import timedelta
     for i, sample in enumerate(simulate(scenario, start=start, run_id=f"demo-{scenario}")):
         timestamp = start + timedelta(seconds=settings["simulation"]["sample_interval_s"] * i)
         frames.append({"observed_at": timestamp.isoformat(), "readings": [asdict(r) for r in sample.readings]})
@@ -153,13 +153,13 @@ class RiskRequest(BaseModel):
 @app.get("/api/risk")
 def risk_matrix():
     return {"hazards": sorted(risk.HAZARDS),
-            "matrix": [[risk.assess("potential leakage", p, s) for s in range(1, 6)] for p in range(1, 6)]}
+            "matrix": [[risk.assess("potential leakage", p, s, risk_thresholds) for s in range(1, 6)] for p in range(1, 6)]}
 
 
 @app.post("/api/risk")
 def evaluate_risk(request: RiskRequest):
     try:
-        assessment = risk.assess(request.hazard, request.probability, request.severity)
+        assessment = risk.assess(request.hazard, request.probability, request.severity, risk_thresholds)
         if request.save:
             if not store.url:
                 raise HTTPException(503, "Review storage is unavailable in demo-only mode")

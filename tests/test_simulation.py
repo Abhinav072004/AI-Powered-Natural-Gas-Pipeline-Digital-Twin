@@ -29,3 +29,18 @@ def test_chronological_episode_split(tmp_path):
             assert rows[0]["observed_at"] > last
         last = rows[-1]["observed_at"]
         episodes.update(ids)
+
+
+def test_csv_export_preserves_missing_telemetry(tmp_path):
+    import csv
+    from pipeline_twin.simulation import export_csv
+
+    experiment(tmp_path, rounds=1, steps=12)
+    export_csv(tmp_path)
+    with (tmp_path / "test.csv").open() as handle:
+        rows = list(csv.DictReader(handle))
+    failed = [row for row in rows if row["event_label"] == "communication fault"]
+    assert failed and failed[0]["sensor_health"] == "unavailable"
+    assert failed[0]["inlet_pressure_pa_absolute"] == ""
+    leak = next(row for row in rows if row["event_label"] == "potential leakage")
+    assert leak["affected_segment_id"] and float(leak["outlet_flow_kg_s"]) > 0
