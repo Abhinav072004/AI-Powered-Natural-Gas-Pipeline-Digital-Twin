@@ -169,3 +169,38 @@ def evaluate_risk(request: RiskRequest):
         raise HTTPException(422, str(exc)) from exc
     except psycopg.Error as exc:
         raise HTTPException(503, "Review storage unavailable") from exc
+
+
+class CopilotRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question: str = Field(min_length=5, max_length=1000)
+    scenario: str | None = None
+
+
+@lru_cache(maxsize=1)
+def knowledge_index():
+    from .copilot import KnowledgeIndex, passages
+    directory = os.getenv("KNOWLEDGE_PDF_DIRECTORY")
+    return KnowledgeIndex(passages(Path(directory) if directory else None), os.getenv("KNOWLEDGE_INDEX_PATH"))
+
+
+@app.post("/api/copilot")
+def copilot(request: CopilotRequest):
+    from .copilot import answer
+
+    if request.scenario is not None and request.scenario not in SCENARIOS:
+        raise HTTPException(422, "Unknown synthetic scenario")
+    snapshot = demo_payload(request.scenario) if request.scenario else dashboard()
+    context = None
+    if snapshot["observed_at"]:
+        detection = snapshot["detection"] or {}
+        pressure = snapshot["average_pressure_pa"]
+        pressure_text = f"{pressure / 1e5:.2f} bar(a)" if pressure is not None else "unavailable"
+        context = (f"Simulated run {snapshot['run_id']} at {snapshot['observed_at']}, "
+                   f"state {snapshot['state']}. Average pressure {pressure_text}. Classification "
+                   f"{detection.get('classification', 'unavailable')}.")
+        if detection.get("estimated_segment"):
+            context += f" Candidate affected segment {detection['estimated_segment']}."
+        if detection.get("residual_kg_s") is not None:
+            context += f" Mass residual {detection['residual_kg_s']:.2f} kg/s."
+    return answer(knowledge_index(), request.question, context)
