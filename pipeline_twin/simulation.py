@@ -115,14 +115,19 @@ def simulate(scenario: str, *, steps: int = 40, seed: int | None = None,
             measured_flow = state.face_flows_kg_s[-1] - (4.0 if active and scenario == "flow_fault" else 0)
             add("FT-102", count, None if missing else measured_flow, "kg/s", 0.14,
                 "missing" if missing else "good")
-            power, discharge = compressor_metrics(
-                compressor["suction_pressure_pa_absolute"], p_in, temperature, state.face_flows_kg_s[0],
-                pipe.gas.molecular_weight, efficiency, compressor["baseline_heat_capacity_ratio"],
-            )
-            add("TT-102", 0, discharge, "K", 0.18)
+            if state.face_flows_kg_s[0] > 0:
+                power, discharge = compressor_metrics(
+                    compressor["suction_pressure_pa_absolute"], p_in, temperature, state.face_flows_kg_s[0],
+                    pipe.gas.molecular_weight, efficiency, compressor["baseline_heat_capacity_ratio"],
+                )
+                add("TT-102", 0, discharge, "K", 0.18)
+            else:
+                # The fixed-pressure boundary allows reverse flow. There is no forward compression.
+                power = 0.0
+                add("TT-102", 0, None, "K", quality="missing")
             add("VIB-101", 0, 2.0 + (3.9 * progress if active and scenario == "compressor_degradation" else 0),
                 "mm/s", 0.08)
-            add("PWR-101", 0, power, "W", 8000)
+            add("PWR-101", 0, power, "W", 8000 if power else 0)
             for ordinal, boundary in enumerate(locations["sectionalizing_valve_boundaries"]):
                 add("XV-101" if ordinal == 0 else f"XV-B{boundary:02}", boundary,
                     int(not (ordinal == 0 and active and scenario == "valve_abnormal")), "boolean")
