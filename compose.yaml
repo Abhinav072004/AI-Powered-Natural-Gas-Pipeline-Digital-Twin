@@ -69,6 +69,7 @@ services:
     networks: [core, edge]
     environment:
       <<: *database
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       TELEMETRY_STALE_AFTER_S: ${TELEMETRY_STALE_AFTER_S:-180}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_MODEL: ${LLM_MODEL:-}

@@ -60,7 +60,7 @@ def analyze(run_id: str | None, frames: list[dict], state: str) -> dict:
                       "outlet_pressure_pa": values.get("PT-103"), "inlet_flow_kg_s": values.get("FT-101"),
                       "delivery_flow_kg_s": values.get("FT-102"), "power_w": values.get("PWR-101"),
                       **latest})
-        indicators = condition_indicators(frame["readings"], evidence, evidence.residual_kg_s or 0)
+        indicators = condition_indicators(frame["readings"], evidence)
         for name, indicator in indicators.items():
             if indicator is not None:
                 assessments[name].append(indicator)

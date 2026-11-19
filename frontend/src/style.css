@@ -79,3 +79,8 @@ input,select{background:#fff;color:#182f40}.form input,.form select{width:100%;b
 .answer{white-space:pre-wrap;line-height:1.6}.sources{margin:9px 0 0;padding-left:20px;list-style:decimal}.sources li{padding:7px 0;border-bottom:1px solid #e9eef2}
 @media(max-width:1050px){.shell{grid-template-columns:185px minmax(0,1fr)}.content,.topbar{padding-left:19px;padding-right:19px}.metric{padding:13px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.shell{display:block}.sidebar{position:static;height:auto;padding:12px}.brand{padding-bottom:4px}.sidebar nav{display:flex;overflow-x:auto;margin-top:7px;gap:3px}.sidebar nav a{white-space:nowrap;font-size:11px;padding:7px}.sidebar-bottom,.top-controls time{display:none}.content,.topbar{padding-left:12px;padding-right:12px}.cols,.cols.balanced{grid-template-columns:minmax(0,1fr)}.route{overflow-x:auto}.route-segments{min-width:275px}.route-end svg{display:none}.segment-detail{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){
+  .top-controls,.top-controls label,.top-controls select{min-width:0}
+  .top-controls label>svg{flex:none}
+  .top-controls select{text-overflow:ellipsis}
+}

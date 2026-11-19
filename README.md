@@ -2,6 +2,18 @@
 
 An independent academic pipeline monitoring and decision-support prototype for a 296.105 km virtual recreation of the Bokaro–Angul Pipeline Odisha section. All telemetry, pipeline dimensions, operating conditions, alerts, and energy savings are simulated. The project has no connection to GAIL operational systems and exposes no physical equipment control interface.
 
+## GitHub Pages dashboard
+
+[Open the Pages site](https://abhinav072004.github.io/AI-Powered-Natural-Gas-Pipeline-Digital-Twin/) · [CI and deployment runs](https://github.com/Abhinav072004/AI-Powered-Natural-Gas-Pipeline-Digital-Twin/actions/workflows/deploy.yml)
+
+![Operations overview with the virtual pipeline, pressure trends and equipment health](docs/dashboard-preview.png)
+
+The published dashboard can replay all ten simulations and browse pipeline segments, alerts, and maintenance scores. It also includes calculated energy presets, a risk matrix, and local engineering reference search.
+
+On the first deployment, choose **GitHub Actions** under **Settings → Pages → Build and deployment → Source**. Then run **CI and GitHub Pages** on `main` from the Actions tab. Future pushes to `main` run the pipeline automatically, and pull requests run validation. The deployment job registers the site under the repository’s `github-pages` environment.
+
+The workflow runs Python tests and browser checks, generates demonstration data, and exercises Mosquitto, TimescaleDB and FastAPI in Docker Compose before it publishes the Pages artifact. GitHub Pages hosts the frontend. To connect it to a hosted FastAPI service, set the repository Actions variable `TWIN_API_BASE_URL` to the service's public HTTPS origin, set the backend's `CORS_ORIGINS` to `https://abhinav072004.github.io`, and rerun the workflow. Live MQTT and saved reviews require the backend and its database. A public backend needs its own authentication and traffic controls.
+
 ## Run the prototype
 
 Requires Docker Engine and Docker Compose. From the repository root, start the stack:

@@ -9,6 +9,8 @@ import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { AssistantResult, EnergyResult, Event, RiskAssessment, RiskMatrix, Twin } from './types'
+import { askCopilot, calculateEnergy, calculateRisk, hasBackend, loadEnergyOptions, loadRisk, loadTwin, publishedReplay } from './data'
+import type { EnergyOptions } from './data'
 import './style.css'
 
 const nav = [
@@ -34,15 +36,6 @@ const mw = (n: number | null | undefined) => n == null ? null : n / 1e6
 const pct = (n: number | null | undefined) => n == null ? '—' : fmt(n * 100, 0) + '%'
 const clock = (stamp: string) => new Date(stamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const result = await fetch(path, init)
-  if (!result.ok) {
-    const body = await result.json().catch(() => ({}))
-    throw new Error(typeof body.detail === 'string' ? body.detail : `Request failed (${result.status})`)
-  }
-  return result.json()
-}
 
 function Card({ title, detail, children, className = '' }: { title: string; detail?: string; children: ReactNode; className?: string }) {
   return <section className={`panel ${className}`}><header><h2>{title}</h2>{detail && <p>{detail}</p>}</header>{children}</section>
@@ -154,7 +147,7 @@ function Leaks({ data }: { data: Twin }) {
     <Metric icon={Activity} label="Classification" value={d ? titleCase(d.classification) : '—'} note={data.model_loaded ? 'ML and physics' : 'Physics baseline'} />
     <Metric icon={Droplets} label="Leak probability" value={pct(d?.leak_probability)} note="Synthetic classifier score" />
     <Metric icon={Waypoints} label="Estimated segment" value={d?.estimated_segment ? `S${d.estimated_segment}` : '—'} note="Localization estimate" />
-    <Metric icon={Radio} label="Telemetry coverage" value={pct(d?.availability)} note={`${fmt(data.inference_ms, 2)} ms latest inference`} />
+    <Metric icon={Radio} label="Telemetry coverage" value={pct(d?.availability)} note={data.inference_ms == null ? undefined : `${fmt(data.inference_ms, 2)} ms latest inference`} />
   </div><div className="cols balanced">
     <Card title="Mass-balance residual" detail="Inflow minus delivery and observed inventory change">
       <Chart data={data.trends.map(t => ({ name: clock(t.observed_at), residual: t.residual_kg_s }))} unit="kg/s" lines={[{ key: 'residual', label: 'Smoothed residual', color: teal }]} />
@@ -169,13 +162,18 @@ function Energy({ data }: { data: Twin }) {
   const [result, setResult] = useState<EnergyResult | null>(null)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
+  const [options, setOptions] = useState<EnergyOptions | null>(null)
+  useEffect(() => {
+    if (publishedReplay) loadEnergyOptions().then(setOptions).catch(err => setError(String(err)))
+  }, [])
   async function calculate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const fields = new FormData(event.currentTarget)
-    const params = new URLSearchParams()
-    for (const key of ['flow', 'delivery_bar', 'hours']) params.set(key, String(fields.get(key)))
+    const flow = Number(fields.get('flow'))
+    const pressure = Number(fields.get('delivery_bar'))
+    const hours = Number(fields.get('hours'))
     setError(''); setPending(true)
-    try { setResult(await request<EnergyResult>(`/api/energy?${params}`)) }
+    try { setResult(await calculateEnergy(flow, pressure, hours)) }
     catch (err) { setError(String(err)); setResult(null) }
     finally { setPending(false) }
   }
@@ -184,10 +182,14 @@ function Energy({ data }: { data: Twin }) {
       <Card title="Compressor power" detail="Observed simulated shaft power · MW"><Chart data={data.trends.map(t => ({ name: clock(t.observed_at), power: mw(t.power_w) }))} unit="MW" lines={[{ key: 'power', label: 'Shaft power', color: teal }]} /></Card>
       <Card title="Evaluate a scenario" detail="Fixed delivery flow with a minimum outlet pressure">
         <form className="form" onSubmit={calculate}>
-          <label>Delivery flow (kg/s)<input name="flow" type="number" min="0.1" max="200" step="any" defaultValue="60" required /></label>
-          <label>Minimum delivery pressure (bar(a))<input name="delivery_bar" type="number" min="1" max="100" step="any" defaultValue="45" required /></label>
+          <label>Delivery flow (kg/s){publishedReplay
+            ? options && <select name="flow" defaultValue="60">{options.flows.map(value => <option key={value}>{value}</option>)}</select>
+            : <input name="flow" type="number" min="0.1" max="200" step="any" defaultValue="60" required />}</label>
+          <label>Minimum delivery pressure (bar(a)){publishedReplay
+            ? options && <select name="delivery_bar" defaultValue="45">{options.delivery_pressures.map(value => <option key={value}>{value}</option>)}</select>
+            : <input name="delivery_bar" type="number" min="1" max="100" step="any" defaultValue="45" required />}</label>
           <label>Duration (hours)<input name="hours" type="number" min="0.1" max="720" step="any" defaultValue="1" required /></label>
-          <button className="primary" disabled={pending}>{pending ? 'Calculating…' : 'Compare operating points'}</button>
+          <button className="primary" disabled={pending || (publishedReplay && !options)}>{pending ? 'Calculating…' : 'Compare operating points'}</button>
         </form>
       </Card>
     </div>
@@ -220,15 +222,18 @@ function Risk({ data }: { data: Twin }) {
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null)
   const [scores, setScores] = useState({ p: 3, s: 3 })
   const [error, setError] = useState('')
-  useEffect(() => { request<RiskMatrix>('/api/risk').then(setMatrix).catch(err => setError(String(err))) }, [])
+  useEffect(() => { loadRisk().then(setMatrix).catch(err => setError(String(err))) }, [])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!matrix) return
     const form = new FormData(event.currentTarget)
     const save = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('name') === 'save'
     try {
       setError('')
-      setAssessment(await request('/api/risk', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hazard: form.get('hazard'), probability: scores.p, severity: scores.s, note: form.get('note'), save }) }))
+      setAssessment(await calculateRisk({
+        hazard: String(form.get('hazard')), probability: scores.p, severity: scores.s,
+        note: String(form.get('note') ?? ''), save,
+      }, matrix))
     } catch (err) { setError(String(err)) }
   }
   return <div className="stack"><h1>Safety &amp; risk</h1><div className="cols balanced">
@@ -244,8 +249,8 @@ function Risk({ data }: { data: Twin }) {
         <label>Hazard<select name="hazard">{matrix.hazards.map(h => <option value={h} key={h}>{titleCase(h)}</option>)}</select></label>
         <div className="fields"><label>Probability<input type="number" min="1" max="5" value={scores.p} onChange={e => setScores({ ...scores, p: +e.target.value })} required /></label>
           <label>Consequence<input type="number" min="1" max="5" value={scores.s} onChange={e => setScores({ ...scores, s: +e.target.value })} required /></label></div>
-        <label>Review note<input name="note" maxLength={1000} /></label>
-        <div className="actions"><button className="primary">Evaluate risk</button><button className="secondary" name="save">Save review</button></div>
+        {hasBackend && <label>Review note<input name="note" maxLength={1000} /></label>}
+        <div className="actions"><button className="primary">Evaluate risk</button>{hasBackend && <button className="secondary" name="save">Save review</button>}</div>
       </form>}
       {error && <p className="notice" role="alert">{error}</p>}
       {assessment && <p className={`risk-result ${assessment.level}`}><strong>{titleCase(assessment.level)} · {assessment.score}/25</strong><br />{assessment.response}{assessment.review_id && ` · Review #${assessment.review_id}`}</p>}
@@ -253,7 +258,7 @@ function Risk({ data }: { data: Twin }) {
   </div><Card title="Alarm history"><Events events={data.events} /></Card></div>
 }
 
-function Copilot({ source }: { source: string }) {
+function Copilot({ source, data }: { source: string; data: Twin }) {
   const [question, setQuestion] = useState('')
   const [result, setResult] = useState<AssistantResult | null>(null)
   const [error, setError] = useState('')
@@ -262,8 +267,7 @@ function Copilot({ source }: { source: string }) {
     event.preventDefault()
     setError(''); setPending(true); setResult(null)
     try {
-      setResult(await request('/api/copilot', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, scenario: source === 'live' ? null : source }) }))
+      setResult(await askCopilot(question, source, data))
     } catch (err) { setError(String(err)) }
     finally { setPending(false) }
   }
@@ -274,7 +278,7 @@ function Copilot({ source }: { source: string }) {
       <button className="primary" disabled={pending}>{pending ? 'Retrieving…' : 'Ask'}</button></form>
     <div className="prompts">{prompts.map(p => <button key={p} type="button" onClick={() => setQuestion(p)}>{p}</button>)}</div>
     {error && <p className="notice" role="alert">{error}</p>}
-  </Card>{result && <Card title="Response" detail={result.mode === 'generated' ? 'Generated using retrieved sources' : 'Retrieved source excerpts'}>
+  </Card>{result && <Card title="Response" detail={result.mode === 'generated' ? 'Generated using retrieved sources' : result.sources.length ? 'Retrieved source excerpts' : undefined}>
     <div className="answer">{result.answer}</div>
     {result.simulated_context && <p className="context"><strong>Simulation context</strong><br />{result.simulated_context}</p>}
     <h3>Sources</h3><ol className="sources">{result.sources.map((item, index) => <li key={index}><strong>{item.title}{item.page ? ` · p. ${item.page}` : ''}</strong>
@@ -303,7 +307,7 @@ function App() {
     let timer: number | undefined
     async function refresh() {
       try {
-        const next = await request<Twin>(source === 'live' ? '/api/dashboard' : `/api/demo/${source}`, { signal: abort.signal })
+        const next = await loadTwin(source, abort.signal)
         if (!abort.signal.aborted) { setSnapshot({ source, data: next }); setError('') }
       } catch (err) { if (!abort.signal.aborted) setError(String(err)) }
       if (source === 'live' && !abort.signal.aborted) timer = window.setTimeout(refresh, 4000)
@@ -312,7 +316,7 @@ function App() {
     return () => { abort.abort(); window.clearTimeout(timer) }
   }, [source])
   const go = (target: Page) => { window.location.hash = target }
-  const status = data?.state === 'demo' ? 'Scenario replay' : data?.state === 'live' ? 'Live MQTT' : data?.state === 'stale' ? 'Telemetry stale' : 'Waiting for telemetry'
+  const status = data?.state === 'demo' ? (publishedReplay ? 'Published simulation' : 'Scenario replay') : data?.state === 'live' ? 'Live MQTT' : data?.state === 'stale' ? 'Telemetry stale' : 'Waiting for telemetry'
   return <div className="shell"><aside className="sidebar">
     <div className="brand"><span><Waypoints size={22} /></span><div>Pipeline Twin<small>SIMULATION WORKSPACE</small></div></div>
     <nav aria-label="Workspace views">{nav.map(({ key, label, icon: Icon }) =>
@@ -322,7 +326,7 @@ function App() {
     <div className="topbar"><span className={`status ${data?.state === 'stale' ? 'stale' : ''}`}><span />{status}</span>
       <div className="top-controls">{data?.observed_at && <time dateTime={data.observed_at}><Clock3 size={14} />{clock(data.observed_at)} UTC</time>}
         <label><ArrowDownUp size={15} /><span className="sr-only">Telemetry source</span><select value={source} onChange={e => { setError(''); setSource(e.target.value) }}>
-          <optgroup label="Telemetry"><option value="live">Live MQTT stream</option></optgroup>
+          {hasBackend && <optgroup label="Telemetry"><option value="live">Live MQTT stream</option></optgroup>}
           <optgroup label="Scenario replay">{Object.entries(names).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</optgroup>
         </select></label></div>
     </div>
@@ -337,7 +341,7 @@ function App() {
           case 'energy': return <Energy data={data} />
           case 'maintenance': return <Maintenance data={data} />
           case 'risk': return <Risk data={data} />
-          case 'copilot': return <Copilot source={source} />
+          case 'copilot': return <Copilot source={source} data={data} />
         }
       })()}
     </div>

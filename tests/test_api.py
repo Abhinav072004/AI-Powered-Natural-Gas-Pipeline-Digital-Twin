@@ -13,6 +13,8 @@ def test_dashboard_demo_and_missing_data():
     response = client.get("/api/demo/normal")
     assert response.status_code == 200
     assert len(response.json()["segments"]) == 8
+    meter = next(item for item in response.json()["maintenance"] if item["equipment"] == "flow meter")
+    assert meter["health_score"] == 100
     response = client.get("/api/demo/communication_failure")
     assert response.json()["detection"]["classification"] == "communication fault"
     assert response.json()["average_pressure_pa"] is None

@@ -58,13 +58,14 @@ def train(output: Path):
     return report
 
 
-def condition_indicators(readings: list[dict], evidence, flow_bias_kg_s: float = 0.0) -> dict[str, float | None]:
+def condition_indicators(readings: list[dict], evidence) -> dict[str, float | None]:
     values = {row["sensor_id"]: row["value"] for row in readings if row["quality"] == "good"}
     vibration, discharge = values.get("VIB-101"), values.get("TT-102")
     temp_reference = evidence.baseline_discharge_temperature_k
     compressor = (max(0, (vibration - 2) / 4, (discharge - temp_reference) / 14)
                   if vibration is not None and discharge is not None and temp_reference is not None else None)
     valve = values.get("XV-101")
+    delivery_meter = next((reading for reading in readings if reading["sensor_id"] == "FT-102"), None)
     pressure, gradient_peer = evidence.features[7:9]
     temperature = values.get("TT-101")
     neighboring = [v for tag, v in values.items() if tag.startswith("TT-B") and v is not None]
@@ -73,8 +74,8 @@ def condition_indicators(readings: list[dict], evidence, flow_bias_kg_s: float =
         "sectionalizing valve": 1.0 - valve if valve is not None else None,
         "pressure transmitter": (max(0.0, min(pressure, gradient_peer) - 15_000) / 160_000
                                  if np.isfinite(pressure) and np.isfinite(gradient_peer) else None),
-        "flow meter": 1.0 if values.get("FT-102") is None and readings else (
-            min(1.5, abs(flow_bias_kg_s) / 5) if values.get("FT-102") is not None else None),
+        # Pipeline imbalance has multiple causes. Use direct meter quality for its condition indicator.
+        "flow meter": float(delivery_meter["quality"] != "good") if delivery_meter is not None else None,
         "temperature sensor": (abs(temperature - float(np.median(neighboring))) / 3
                                if temperature is not None and neighboring else None),
     }
