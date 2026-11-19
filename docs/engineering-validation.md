@@ -14,3 +14,7 @@ Run the checks with `uv sync --locked --no-install-project` and `uv run --no-syn
 | Implicit linepack conservation | The model holds the steady baseline and closes all segment mass balances to within 1 g over a 60-second demand and withdrawal disturbance. |
 
 The dynamic model freezes steady-state pressure-squared face resistances around the positive-flow baseline. It uses backward Euler for storage and pressure-dependent Peng–Robinson density. It models slow deviations around that baseline and assumes the bulk gas stays in a single vapor phase. The state calculations are academic and have no field calibration. Fast wave propagation, heat transfer, elevation, and phase stability are outside the implemented model. The methane check validates a numerical EOS reference point, and field-property or instrument validation requires separate data.
+
+## Compressor and energy comparison
+
+The compressor equation yields zero power at a unit pressure ratio. At 60 kg/s, 45 bar(a) suction, 65 bar(a) discharge and 78% isentropic efficiency, predicted temperature is 334.1 K and baseline shaft power is 4.313 MW. SciPy brackets the minimum simulated discharge pressure that sustains 45 bar(a) at delivery. The default case yields about 54.94 bar(a) discharge and 2.295 MW, a simulated difference of 2,017 kWh over one hour. A demand for 80 bar(a) delivery is reported infeasible with the configured ceiling. This calculation uses constant heat capacity and excludes compressor maps, driver losses, and field constraints.
