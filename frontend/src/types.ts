@@ -1,0 +1,12 @@
+export type Reading = { sensor_id: string; value: number | null; quality: string; unit: string; boundary_index: number | null }
+export type Detection = { classification: string; leak_probability?: number | null; novelty_score?: number | null; estimated_segment?: number | null; residual_kg_s?: number | null; pressure_deviation_pa?: number | null; observed_inventory_kg?: number | null; availability: number }
+export type Segment = { segment_id: number; start_km: number; end_km: number; inlet_pressure_pa_absolute: number; outlet_pressure_pa_absolute: number; observed_inlet_pa: number | null; observed_outlet_pa: number | null; mass_flow_kg_s: number; velocity_m_s: number; inventory_kg: number }
+export type Trend = Detection & { observed_at: string; inlet_pressure_pa: number | null; outlet_pressure_pa: number | null; inlet_flow_kg_s: number | null; delivery_flow_kg_s: number | null; power_w: number | null }
+export type Event = Detection & { observed_at: string }
+export type Equipment = { equipment: string; health_score: number | null; priority: number | null; failure_probability: number | null; inspection: string; indicator_trend: number[] }
+export type Twin = { state: string; run_id: string | null; case_study: { length_km: number; section: string }; latest_readings: Reading[]; observed_at: string | null; average_pressure_pa: number | null; segments: Segment[]; detection: Detection | null; trends: Trend[]; events: Event[]; maintenance: Equipment[]; inference_ms: number; model_loaded: boolean; scenario_names: string[] }
+export type OperatingPoint = { discharge_pa_absolute: number; delivery_pa_absolute: number; power_w: number }
+export type EnergyResult = { status: string; baseline: OperatingPoint | null; optimized: OperatingPoint | null; estimated_savings_kwh: number | null; duration_h: number; baseline_meets_delivery: boolean }
+export type RiskAssessment = { hazard: string; probability: number; severity: number; score: number; level: string; response: string; review_id?: number }
+export type RiskMatrix = { hazards: string[]; matrix: RiskAssessment[][] }
+export type AssistantResult = { answer: string; mode: string; simulated_context: string | null; sources: { title: string; reference: string; excerpt: string; page: number | null }[] }
