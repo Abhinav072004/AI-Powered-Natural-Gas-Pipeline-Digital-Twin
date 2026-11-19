@@ -12,3 +12,7 @@ With the locked environment, run `python -m pipeline_twin.simulation dataset --r
 Validation selected Random Forest at a probability threshold of 0.25, with two consecutive candidates and a positive smoothed mass-balance residual required to report a potential leak. Position estimates agreed with the true segment on 80% of the 30 samples localized by this model. Mean midpoint error was 40.6 km because some estimates pointed to distant segments. Isolation Forest, fitted on normal training windows, yielded novelty ROC-AUC of 0.725 on test observations with telemetry.
 
 The held-out leak set is small. Persistent false alarms, intermittent missed samples, and occasional large localization errors remain. Investigate the observations and data quality before accepting a proposed classification or segment. Results describe generated scenarios and require independent validation before use on measured data.
+
+## Maintenance scoring
+
+Run `python -m pipeline_twin.maintenance` to train the failure-window model and reproduce the [maintenance metrics](maintenance-evaluation.json). Training uses 120 generated trajectories and testing uses 40 trajectories with separate seeds. For 1,873 held-out windows, logistic regression attained 0.994 ROC-AUC, 0.947 average precision, and a Brier score of 0.019. The label means the latent condition indicator crosses the synthetic failure threshold within ten samples. The score ranks virtual equipment using a mapped condition indicator. There is no equipment-specific field calibration or remaining-life estimate.

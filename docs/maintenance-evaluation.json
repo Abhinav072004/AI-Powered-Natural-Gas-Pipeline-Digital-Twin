@@ -1,0 +1,9 @@
+{
+  "training_episodes": 120,
+  "held_out_episodes": 40,
+  "evaluated_windows": 1873,
+  "failure_horizon_samples": 10,
+  "roc_auc": 0.9940374506143932,
+  "average_precision": 0.9473075534319862,
+  "brier_score": 0.019122521685585273
+}
