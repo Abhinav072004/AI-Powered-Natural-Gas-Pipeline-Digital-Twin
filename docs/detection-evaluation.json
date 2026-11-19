@@ -1,0 +1,490 @@
+{
+  "physics": {
+    "isolation_forest_novelty_roc_auc": null,
+    "classification": {
+      "normal operation": {
+        "precision": 0.4910891089108911,
+        "recall": 0.9051094890510949,
+        "f1-score": 0.6367137355584083,
+        "support": 274.0
+      },
+      "potential leakage": {
+        "precision": 0.4423076923076923,
+        "recall": 0.2804878048780488,
+        "f1-score": 0.34328358208955223,
+        "support": 82.0
+      },
+      "sensor malfunction": {
+        "precision": 1.0,
+        "recall": 0.1,
+        "f1-score": 0.18181818181818182,
+        "support": 80.0
+      },
+      "demand fluctuation": {
+        "precision": 1.0,
+        "recall": 0.23809523809523808,
+        "f1-score": 0.38461538461538464,
+        "support": 42.0
+      },
+      "abnormal pressure event": {
+        "precision": 1.0,
+        "recall": 0.19834710743801653,
+        "f1-score": 0.3310344827586207,
+        "support": 121.0
+      },
+      "communication fault": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 41.0
+      },
+      "accuracy": 0.553125,
+      "macro avg": {
+        "precision": 0.8222328002030972,
+        "recall": 0.453673273243733,
+        "f1-score": 0.4795775611400246,
+        "support": 640.0
+      },
+      "weighted avg": {
+        "precision": 0.7106681978293983,
+        "recall": 0.553125,
+        "f1-score": 0.4911926412303765,
+        "support": 640.0
+      }
+    },
+    "labels": [
+      "normal operation",
+      "potential leakage",
+      "sensor malfunction",
+      "demand fluctuation",
+      "abnormal pressure event",
+      "communication fault"
+    ],
+    "confusion_matrix": [
+      [
+        248,
+        26,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        59,
+        23,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        69,
+        3,
+        8,
+        0,
+        0,
+        0
+      ],
+      [
+        32,
+        0,
+        0,
+        10,
+        0,
+        0
+      ],
+      [
+        97,
+        0,
+        0,
+        0,
+        24,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        41
+      ]
+    ],
+    "leak_roc_auc": null,
+    "false_leak_alarm_fraction_of_normal_samples": 0.0948905109489051,
+    "false_leak_alarms_per_normal_hour": 2.6277372262773726,
+    "leak_episodes": 4,
+    "missed_episodes": 2,
+    "median_detection_latency_s": 90.0,
+    "localized_samples": 23,
+    "mean_localization_error_km": 37.052608695652175,
+    "exact_segment_fraction": 0.8260869565217391
+  },
+  "random_forest": {
+    "isolation_forest_novelty_roc_auc": 0.7246827624929815,
+    "classification": {
+      "normal operation": {
+        "precision": 0.7642045454545454,
+        "recall": 0.9817518248175182,
+        "f1-score": 0.8594249201277955,
+        "support": 274.0
+      },
+      "potential leakage": {
+        "precision": 0.8108108108108109,
+        "recall": 0.36585365853658536,
+        "f1-score": 0.5042016806722689,
+        "support": 82.0
+      },
+      "sensor malfunction": {
+        "precision": 0.9583333333333334,
+        "recall": 0.575,
+        "f1-score": 0.71875,
+        "support": 80.0
+      },
+      "demand fluctuation": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 42.0
+      },
+      "abnormal pressure event": {
+        "precision": 1.0,
+        "recall": 0.9917355371900827,
+        "f1-score": 0.995850622406639,
+        "support": 121.0
+      },
+      "communication fault": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 41.0
+      },
+      "accuracy": 0.85625,
+      "macro avg": {
+        "precision": 0.9222247815997816,
+        "recall": 0.8190568367573644,
+        "f1-score": 0.8463712038677839,
+        "support": 640.0
+      },
+      "weighted avg": {
+        "precision": 0.8696018728245292,
+        "recall": 0.85625,
+        "f1-score": 0.840351392564602,
+        "support": 640.0
+      }
+    },
+    "labels": [
+      "normal operation",
+      "potential leakage",
+      "sensor malfunction",
+      "demand fluctuation",
+      "abnormal pressure event",
+      "communication fault"
+    ],
+    "confusion_matrix": [
+      [
+        269,
+        3,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        52,
+        30,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        30,
+        4,
+        46,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        42,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        120,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        41
+      ]
+    ],
+    "leak_roc_auc": 0.8631217763790542,
+    "false_leak_alarm_fraction_of_normal_samples": 0.010948905109489052,
+    "false_leak_alarms_per_normal_hour": 0.6569343065693432,
+    "leak_episodes": 4,
+    "missed_episodes": 0,
+    "median_detection_latency_s": 360.0,
+    "localized_samples": 30,
+    "mean_localization_error_km": 40.6105,
+    "exact_segment_fraction": 0.8,
+    "validation_threshold": 0.25
+  },
+  "svm": {
+    "isolation_forest_novelty_roc_auc": 0.7246827624929815,
+    "classification": {
+      "normal operation": {
+        "precision": 0.7884057971014493,
+        "recall": 0.9927007299270073,
+        "f1-score": 0.8788368336025848,
+        "support": 274.0
+      },
+      "potential leakage": {
+        "precision": 0.85,
+        "recall": 0.4146341463414634,
+        "f1-score": 0.5573770491803278,
+        "support": 82.0
+      },
+      "sensor malfunction": {
+        "precision": 1.0,
+        "recall": 0.675,
+        "f1-score": 0.8059701492537313,
+        "support": 80.0
+      },
+      "demand fluctuation": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 42.0
+      },
+      "abnormal pressure event": {
+        "precision": 1.0,
+        "recall": 0.9752066115702479,
+        "f1-score": 0.9874476987447699,
+        "support": 121.0
+      },
+      "communication fault": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 41.0
+      },
+      "accuracy": 0.8765625,
+      "macro avg": {
+        "precision": 0.9397342995169082,
+        "recall": 0.8429235813064531,
+        "f1-score": 0.8716052884635689,
+        "support": 640.0
+      },
+      "weighted avg": {
+        "precision": 0.8901924818840581,
+        "recall": 0.8765625,
+        "f1-score": 0.8647890530129855,
+        "support": 640.0
+      }
+    },
+    "labels": [
+      "normal operation",
+      "potential leakage",
+      "sensor malfunction",
+      "demand fluctuation",
+      "abnormal pressure event",
+      "communication fault"
+    ],
+    "confusion_matrix": [
+      [
+        272,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        48,
+        34,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        22,
+        4,
+        54,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        42,
+        0,
+        0
+      ],
+      [
+        3,
+        0,
+        0,
+        0,
+        118,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        41
+      ]
+    ],
+    "leak_roc_auc": 0.8822886615962934,
+    "false_leak_alarm_fraction_of_normal_samples": 0.0072992700729927005,
+    "false_leak_alarms_per_normal_hour": 0.43795620437956206,
+    "leak_episodes": 4,
+    "missed_episodes": 1,
+    "median_detection_latency_s": 180.0,
+    "localized_samples": 34,
+    "mean_localization_error_km": 36.65786764705882,
+    "exact_segment_fraction": 0.7941176470588235,
+    "validation_threshold": 0.25
+  },
+  "xgboost": {
+    "isolation_forest_novelty_roc_auc": 0.7246827624929815,
+    "classification": {
+      "normal operation": {
+        "precision": 0.7358490566037735,
+        "recall": 0.9963503649635036,
+        "f1-score": 0.8465116279069768,
+        "support": 274.0
+      },
+      "potential leakage": {
+        "precision": 0.8235294117647058,
+        "recall": 0.17073170731707318,
+        "f1-score": 0.2828282828282828,
+        "support": 82.0
+      },
+      "sensor malfunction": {
+        "precision": 0.9795918367346939,
+        "recall": 0.6,
+        "f1-score": 0.7441860465116279,
+        "support": 80.0
+      },
+      "demand fluctuation": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 42.0
+      },
+      "abnormal pressure event": {
+        "precision": 0.9666666666666667,
+        "recall": 0.9586776859504132,
+        "f1-score": 0.9626556016597511,
+        "support": 121.0
+      },
+      "communication fault": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 41.0
+      },
+      "accuracy": 0.834375,
+      "macro avg": {
+        "precision": 0.9176061619616399,
+        "recall": 0.7876266263718317,
+        "f1-score": 0.806030259817773,
+        "support": 640.0
+      },
+      "weighted avg": {
+        "precision": 0.8554469794993469,
+        "recall": 0.834375,
+        "f1-score": 0.8033629949377984,
+        "support": 640.0
+      }
+    },
+    "labels": [
+      "normal operation",
+      "potential leakage",
+      "sensor malfunction",
+      "demand fluctuation",
+      "abnormal pressure event",
+      "communication fault"
+    ],
+    "confusion_matrix": [
+      [
+        273,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        64,
+        14,
+        1,
+        0,
+        3,
+        0
+      ],
+      [
+        29,
+        3,
+        48,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        42,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0,
+        116,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        41
+      ]
+    ],
+    "leak_roc_auc": 0.8095987411487018,
+    "false_leak_alarm_fraction_of_normal_samples": 0.0,
+    "false_leak_alarms_per_normal_hour": 0.0,
+    "leak_episodes": 4,
+    "missed_episodes": 2,
+    "median_detection_latency_s": 630.0,
+    "localized_samples": 14,
+    "mean_localization_error_km": 44.93982142857143,
+    "exact_segment_fraction": 0.7857142857142857,
+    "validation_threshold": 0.25
+  },
+  "selected": "random_forest"
+}
