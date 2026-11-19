@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 import os
+from threading import Lock
 from time import perf_counter
 
 from fastapi import FastAPI, HTTPException, Query
@@ -177,8 +178,11 @@ class CopilotRequest(BaseModel):
     scenario: str | None = None
 
 
+knowledge_index_lock = Lock()
+
+
 @lru_cache(maxsize=1)
-def knowledge_index():
+def load_knowledge_index():
     from .copilot import KnowledgeIndex, passages
     directory = os.getenv("KNOWLEDGE_PDF_DIRECTORY")
     return KnowledgeIndex(passages(Path(directory) if directory else None), os.getenv("KNOWLEDGE_INDEX_PATH"))
@@ -203,4 +207,7 @@ def copilot(request: CopilotRequest):
             context += f" Candidate affected segment {detection['estimated_segment']}."
         if detection.get("residual_kg_s") is not None:
             context += f" Mass residual {detection['residual_kg_s']:.2f} kg/s."
-    return answer(knowledge_index(), request.question, context)
+    # Parallel first requests otherwise open the same persistent Chroma client together.
+    with knowledge_index_lock:
+        index = load_knowledge_index()
+    return answer(index, request.question, context)

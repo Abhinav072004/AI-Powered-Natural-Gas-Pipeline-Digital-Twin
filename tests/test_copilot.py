@@ -74,3 +74,34 @@ def test_configured_generation_receives_retrieved_sources(index, monkeypatch):
     monkeypatch.setattr(copilot, "urlopen", response)
     result = answer(index, "What is linepack and why does it matter?", "Synthetic telemetry")
     assert result["mode"] == "generated" and "[1]" in result["answer"]
+
+
+def test_concurrent_cold_requests_share_index(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from time import sleep
+
+    from pipeline_twin import api, copilot
+
+    callers_ready = Barrier(2)
+    opened = []
+    existing = object()
+
+    def create_index(*_args):
+        opened.append(True)
+        sleep(0.1)
+        return existing
+
+    def prepare(_index):
+        callers_ready.wait(timeout=5)
+        return api.copilot(api.CopilotRequest(question="What is linepack?"))
+
+    monkeypatch.setattr(copilot, "KnowledgeIndex", create_index)
+    monkeypatch.setattr(copilot, "answer", lambda index, *_args: index)
+    api.load_knowledge_index.cache_clear()
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            assert list(executor.map(prepare, range(2))) == [existing, existing]
+        assert len(opened) == 1
+    finally:
+        api.load_knowledge_index.cache_clear()
