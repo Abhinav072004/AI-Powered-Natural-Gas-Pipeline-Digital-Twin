@@ -1,0 +1,45 @@
+# Case-study facts as supplied in the project brief. Primary-source verification is pending.
+[case_study]
+project = "Jagdishpur–Haldia–Bokaro–Dhamra Pipeline"
+section = "Bokaro–Angul Pipeline, Odisha section"
+length_km = 296.105
+villages_crossed = 212
+forest_divisions = 7
+districts = 5
+forest_land_ha = 65.4036
+non_forest_land_ha = 658.5433
+
+# All geometry, equipment, sensor placement, and operating inputs below are illustrative.
+[simulation]
+segment_boundaries_km = [0, 40, 80, 120, 160, 200, 240, 270, 296.105]
+pipe_inner_diameter_m = 0.76
+pipe_absolute_roughness_m = 0.000045
+elevation_change_m = 0.0
+inlet_pressure_pa_absolute = 6500000.0
+temperature_k = 300.0
+delivery_mass_flow_kg_s = 60.0
+sample_interval_s = 60
+random_seed = 42
+
+[simulation.gas_mole_fractions]
+methane = 0.940
+ethane = 0.035
+propane = 0.010
+nitrogen = 0.010
+carbon_dioxide = 0.005
+
+[simulation.compressor]
+suction_pressure_pa_absolute = 4500000.0
+minimum_delivery_pressure_pa_absolute = 4500000.0
+maximum_discharge_pressure_pa_absolute = 7500000.0
+isentropic_efficiency = 0.78
+baseline_heat_capacity_ratio = 1.30
+
+# Boundary indices refer to segment_boundaries_km and start at zero.
+[simulation.virtual_locations]
+receiving_station_boundary = 0
+compressor_station_boundary = 0
+pressure_and_temperature_station_boundaries = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+flow_station_boundaries = [0, 8]
+sectionalizing_valve_boundaries = [2, 4, 6]
+delivery_station_boundary = 8
